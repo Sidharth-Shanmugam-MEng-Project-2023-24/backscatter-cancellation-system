@@ -3,6 +3,7 @@ import cv2
 import logging
 from queue import Queue
 from threading import Thread
+from natsort import natsorted
 
 
 class PicameraStream:
@@ -25,12 +26,17 @@ class PicameraStream:
             self.picam2.configure("video")
             
             # Print camera configurations to confirm correct set up
-            print(self.picam2.camera_configuration()['sensor'])
-            print(self.picam2.camera_configuration()['main'])
-            print(self.picam2.camera_configuration()['controls'])
+            logging.debug(self.picam2.camera_configuration()['sensor'])
+            logging.debug(self.picam2.camera_configuration()['main'])
+            logging.debug(self.picam2.camera_configuration()['controls'])
 
             # Start the Pi camera
             self.picam2.start()
+
+            # Return the aligned stream resolution
+            (aligned_width, aligned_height) = self.picam2.camera_configuration()['main']['size']
+            return (aligned_width, aligned_height)
+
         # If the Picamera2 module is not found, then the program is probably not running on a RPi
         except ImportError:
             logging.error("Picamera2 module not found. Make sure you are running this on a Raspberry Pi.")
@@ -86,8 +92,10 @@ class FrameStream:
     def _load_frames(self):
         """ Internal method that populates the image frame queue. """
 
+        logging.debug("Beginning to populate frame queue...")
+
         # Sort all of the frame files inside the folder
-        frames = sorted(os.listdir(self.path))
+        frames = natsorted(os.listdir(self.path))
 
         # For each file in the sorted list of frame files...
         for file in frames:
@@ -100,7 +108,10 @@ class FrameStream:
                 # Read in the file
                 frame = cv2.imread(frame_path)
                 # Store the file in the queue along with the frame number
-                self.q.put((frame_num, frame))
+                self.q.put(frame)
+
+        # Log status
+        logging.debug("Frame queue has been populated.")
 
 
 
@@ -108,10 +119,18 @@ class FrameStream:
     def read(self):
         """ Dequeues the next frame in the sequence. """
 
-        if not self.q.empty():
+        if not self.empty():
             return self.q.get()
         else:
             return None
+
+
+
+
+    def empty(self):
+        """ Returns true if there are no more frames to stream. """
+
+        return self.q.empty()
 
 
 
