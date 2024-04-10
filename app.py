@@ -1,4 +1,5 @@
 from time import sleep
+import numpy as np
 import cv2
 
 from CaptureManager import FrameStream
@@ -39,12 +40,16 @@ VIDEO_CAPTURE_HEIGHT = 600
 ### PREVIEW WINDOW NAMES
 #   These constants store the names for each GUI window
 INPUT_PREVIEW_WINDOW_NAME = "Input Feed"
+SEGMENTATION_PREVIEW_WINDOW_NAME = "Backscatter Segmentation"
+PROJECTOR_PREVIEW_WINDOW_NAME = "Projected Light Pattern"
 
 
 
 
 
-CANNY_THRESHOLD_SIGMA = 0.5
+CANNY_THRESHOLD_SIGMA = 0.33
+BS_MANAGER_HISTOGRAM_EQUALISATION = True
+BS_MANAGER_DEBUG_WINDOWS = True
 
 
 
@@ -59,10 +64,14 @@ if __name__ == "__main__":
     
     input_feed_window = Window(INPUT_PREVIEW_WINDOW_NAME)
 
+    segmentation_window = Window(SEGMENTATION_PREVIEW_WINDOW_NAME)
+
+    projector_window = Window(PROJECTOR_PREVIEW_WINDOW_NAME)
+
     detector = Detector(
         canny_threshold=CANNY_THRESHOLD_SIGMA,
-        histogram_equalisation=True,
-        debug_windows=True
+        histogram_equalisation=BS_MANAGER_HISTOGRAM_EQUALISATION,
+        debug_windows=BS_MANAGER_DEBUG_WINDOWS
     )
 
     while True:
@@ -76,10 +85,35 @@ if __name__ == "__main__":
 
         if frame is not None:
             input_feed_window.update(frame)
+            canny, particles = detector.detect(frame)
 
-            canny = detector.detect(frame)
+            # create a black mask
+            particle_mask = np.copy(frame)
 
-            cv2.waitKey(0)
+            for particle in particles:
+                cv2.circle(
+                    particle_mask,
+                    particle[0],
+                    particle[1],
+                    (0, 0, 255),
+                    1
+                )
 
-    input_feed_window.destroy()
+            segmentation_window.update(particle_mask)
+
+
+            projector_mask = np.ones_like(frame) * 255
+
+            for particle in particles:
+                cv2.circle(
+                    projector_mask,
+                    particle[0],
+                    particle[1],
+                    (0, 0, 0),
+                    -1
+                )
+
+            projector_window.update(projector_mask)
+
+    cv2.destroyAllWindows()
 
