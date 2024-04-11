@@ -1,5 +1,4 @@
 import cv2
-import time
 import numpy as np
 
 from WindowManager import Window
@@ -7,7 +6,7 @@ from TimeManager import Timer
 
 ### DEBUG WINDOW NAMES
 #   These constants store the names for each GUI window
-GRAYSCALE_DEBUG_WINDOW_NAME = "BSDetector Debug: Grayscale"
+GREYSCALE_DEBUG_WINDOW_NAME = "BSDetector Debug: Greyscale"
 GAUSBLUR_DEBUG_WINDOW_NAME = "BSDetector Debug: Gaussian Blur"
 CANNY_DEBUG_WINDOW_NAME = "BSDetector Debug: Canny Algorithm"
 CONTOUR_DEBUG_WINDOW_NAME = "BSDetector Debug: Detected Contours"
@@ -20,16 +19,10 @@ class Detector:
         self.histogram_equalisation = histogram_equalisation
         self.debug_windows = debug_windows
 
-        self.grayscale_process_duration = 0
-        self.histequ_process_duration = 0
-        self.gausblur_process_duration = 0
-        self.findContours_process_duration = 0
-        self.circleContours_process_duration = 0
-        self.preCanny_process_duration = 0
-        self.canny_process_duration = 0
+        self._reset_metrics()
 
         if self.debug_windows:
-            self.grayscale_window = Window(GRAYSCALE_DEBUG_WINDOW_NAME)
+            self.greyscale_window = Window(GREYSCALE_DEBUG_WINDOW_NAME)
             self.gausblur_window = Window(GAUSBLUR_DEBUG_WINDOW_NAME)
             self.canny_window = Window(CANNY_DEBUG_WINDOW_NAME)
             self.contour_window = Window(CONTOUR_DEBUG_WINDOW_NAME)
@@ -39,22 +32,53 @@ class Detector:
 
 
 
-    def _grayscale(self, frame):
+    def _reset_metrics(self):
+        self.greyscale_process_duration = 0
+        self.histequ_process_duration = 0
+        self.gausblur_process_duration = 0
+        self.findContours_process_duration = 0
+        self.circleContours_process_duration = 0
+        self.preCanny_process_duration = 0
+        self.canny_process_duration = 0
+        self.particle_count = 0
+
+
+
+
+    def _get_metrics(self):
+        timings = []
+
+        timings.append(("Greyscale Conversion Duration (s)", self.greyscale_process_duration))
+        if self.histogram_equalisation:
+            timings.append(("Histogram Equalisation Duration (s)", self.histequ_process_duration))
+        timings.append(("Gaussian Blur Duration (s)", self.gausblur_process_duration))
+        timings.append(("Canny Algorithm Duration (s)", self.canny_process_duration))
+        timings.append(("CV2 findContours() Duration (s)", self.findContours_process_duration))
+        timings.append(("CV2 minEnclosingCircle() Duration (s)", self.circleContours_process_duration))
+        timings.append(("Pre-Canny Threshold Finder Duration (s)", self.preCanny_process_duration))
+        timings.append(("Particle Count", self.particle_count))
+
+        return timings
+
+
+
+
+    def _greyscale(self, frame):
         # Log start timestamp
         timer = Timer()
 
-        # apply the single-channel conversion with grayscale filter
-        grayscale = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        # apply the single-channel conversion with greyscale filter
+        greyscale = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
         # Calculate process duration
-        self.grayscale_process_duration = timer.stop()
+        self.greyscale_process_duration = timer.stop()
 
         # output to the debug window if enabled
         if self.debug_windows:
-            self.grayscale_window.update(grayscale)
+            self.greyscale_window.update(greyscale)
 
-        # return the grayscaled frame
-        return grayscale
+        # return the greyscaled frame
+        return greyscale
 
 
 
@@ -151,8 +175,11 @@ class Detector:
 
 
     def detect(self, input):
-        # single channel conversion using grayscaling
-        frame = self._grayscale(input)
+        # reset timings
+        self._reset_metrics()
+
+        # single channel conversion using greyscaling
+        frame = self._greyscale(input)
         
         # apply histogram equalisation to improve contrasts for better Canny
         if self.histogram_equalisation:
@@ -186,13 +213,16 @@ class Detector:
         # Calculate the Canny process duration
         self.canny_process_duration = timer_canny.stop()
 
+        # Calculate particles
         particles = self._segmentation(canny)
+
+        # Log the total number of particles in this frame
+        self.particle_count = len(particles)
 
         # output to the debug window if enabled
         if self.debug_windows:
             self.canny_window.update(canny)
 
         # return canny and contours
-        # return canny, contours
-        return canny, particles
+        return canny, particles, self._get_metrics()
 

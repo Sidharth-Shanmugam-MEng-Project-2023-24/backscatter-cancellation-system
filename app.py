@@ -1,6 +1,7 @@
 from time import sleep
 import numpy as np
 import cv2
+import pprint
 
 from CaptureManager import FrameStream
 from WindowManager import Window
@@ -49,7 +50,7 @@ PROJECTOR_PREVIEW_WINDOW_NAME = "Projected Light Pattern"
 
 CANNY_THRESHOLD_SIGMA = 0.33
 BS_MANAGER_HISTOGRAM_EQUALISATION = True
-BS_MANAGER_DEBUG_WINDOWS = True
+BS_MANAGER_DEBUG_WINDOWS = False
 
 
 
@@ -85,7 +86,9 @@ if __name__ == "__main__":
 
         if frame is not None:
             input_feed_window.update(frame)
-            canny, particles = detector.detect(frame)
+            canny, particles, metrics = detector.detect(frame)
+
+            pprint.pprint(metrics)
 
             # create a black mask
             particle_mask = np.copy(frame)
