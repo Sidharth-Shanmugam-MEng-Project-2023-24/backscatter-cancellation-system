@@ -1,5 +1,6 @@
-from time import sleep
+from datetime import datetime
 import numpy as np
+import pandas as pd
 import cv2
 import pprint
 
@@ -63,6 +64,9 @@ BS_MANAGER_DEBUG_WINDOWS = False
 
 
 if __name__ == "__main__":
+    # Generate CSV export filename
+    export_filename_csv = "export_" + datetime.now().strftime("%m-%d-%Y-%H-%M-%S") + ".csv"
+
     # Initialise capture stream
     stream = FrameStream(VIDEO_CAPTURE_SOURCE)
     
@@ -85,7 +89,20 @@ if __name__ == "__main__":
     # Initialise variable to track frame processing duration (sec)
     total_frame_processing_time = 0
 
-    
+    # Initialise a Pandas DataFrame to log real-time metrics
+    rt_metrics_df = pd.DataFrame(
+        columns=[
+            'Greyscale Conversion Duration (s)',
+            'Histogram Equalisation Duration (s)',
+            'Gaussian Blur Duration (s)',
+            'Pre-Canny Threshold Finder Duration (s)',
+            'Canny Algorithm Duration (s)',
+            'CV2 findContours() Duration (s)',
+            'CV2 minEnclosingCircle() Duration (s)',
+            'Number of MECs on screen',
+            'Total frame processing time (s)'
+        ]
+    )
     
     while True:
         # Read a frame
@@ -147,10 +164,14 @@ if __name__ == "__main__":
             # Append the total frame processing time to the metrics list
             metrics.append(total_frame_processing_time)
 
-            # Print the metrics
-            pprint.pprint(metrics)
-
-
+            # Append metrics list to end of dataframe
+            rt_metrics_df.loc[len(rt_metrics_df)] = metrics
+    
+    # Export dataframe as CSV
+    rt_metrics_df.to_csv(
+        path_or_buf=export_filename_csv,
+        encoding='utf-8'
+    )
 
     cv2.destroyAllWindows()
 
