@@ -13,14 +13,22 @@ CONTOUR_DEBUG_WINDOW_NAME = "BSDetector Debug: Detected Contours"
 HISTEQU_DEBUG_WINDOW_NAME = "BSDetector Debug: Histogram Equalisation"
 
 class Detector:
+    """ Backscatter detection logic (V1): (a) edges are detected using the Canny algorithm, (b) the detected edges are segmented using a simple method - minimum enclosing circle (MEC), (c) the centre coordinates and radius of the detected particles (MECs) are returned. """
 
     def __init__(self, canny_threshold, histogram_equalisation=True, debug_windows=True):
+        # Zero-parameter threshold for canny (https://pyimagesearch.com/2015/04/06/zero-parameter-automatic-canny-edge-detection-with-python-and-opencv/)
         self.canny_threshold = canny_threshold
+        
+        # Whether or not to carry out the histogram equalisation step
         self.histogram_equalisation = histogram_equalisation
+        
+        # Whether or not to print the intermediate step visualisation
         self.debug_windows = debug_windows
 
+        # Initialise the real-time metric variables
         self._reset_metrics()
 
+        # Initialise the debug windows if enabled
         if self.debug_windows:
             self.greyscale_window = Window(GREYSCALE_DEBUG_WINDOW_NAME)
             self.gausblur_window = Window(GAUSBLUR_DEBUG_WINDOW_NAME)
@@ -33,30 +41,44 @@ class Detector:
 
 
     def _reset_metrics(self):
+        """ (Internal) Initialises the real-time tracking metrics. """
+        # Time it takes to apply greyscale filter
         self.greyscale_process_duration = 0
+        # Time it takes to apply histogram equalisation
         self.histequ_process_duration = 0
+        # Time it takes to apply a Gaussian blur
         self.gausblur_process_duration = 0
-        self.findContours_process_duration = 0
-        self.circleContours_process_duration = 0
+        # Time it takes to compute Canny thresholds
         self.preCanny_process_duration = 0
+        # Time it takes to apply the Canny algorithm
         self.canny_process_duration = 0
+        # Time it takes to find contours
+        self.findContours_process_duration = 0
+        # Time it takes to circle the contours (min enclosing circles)
+        self.circleContours_process_duration = 0
+        # The total number of MECs on screen
         self.particle_count = 0
 
 
 
 
     def _get_metrics(self):
-        timings = []
+        """ (Internal) Returns the real-time metrics using a list. """
 
-        timings.append(("Greyscale Conversion Duration (s)", self.greyscale_process_duration))
-        if self.histogram_equalisation:
-            timings.append(("Histogram Equalisation Duration (s)", self.histequ_process_duration))
-        timings.append(("Gaussian Blur Duration (s)", self.gausblur_process_duration))
-        timings.append(("Canny Algorithm Duration (s)", self.canny_process_duration))
-        timings.append(("CV2 findContours() Duration (s)", self.findContours_process_duration))
-        timings.append(("CV2 minEnclosingCircle() Duration (s)", self.circleContours_process_duration))
-        timings.append(("Pre-Canny Threshold Finder Duration (s)", self.preCanny_process_duration))
-        timings.append(("Particle Count", self.particle_count))
+        # If histogram equalisation step is skipped - populate duration with 'None'
+        if not self.histogram_equalisation:
+            self.histequ_process_duration = None
+
+        timings = [
+            self.greyscale_process_duration,        # Greyscale Conversion Duration (s)
+            self.histequ_process_duration,          # Histogram Equalisation Duration (s)
+            self.gausblur_process_duration,         # Gaussian Blur Duration (s)
+            self.preCanny_process_duration,         # Pre-Canny Threshold Finder Duration (s)
+            self.canny_process_duration,            # Canny Algorithm Duration (s)
+            self.findContours_process_duration,     # CV2 findContours() Duration (s)
+            self.circleContours_process_duration,   # CV2 minEnclosingCircle() Duration (s)
+            self.particle_count                     # Number of MECs on screen
+        ]
 
         return timings
 
@@ -64,6 +86,8 @@ class Detector:
 
 
     def _greyscale(self, frame):
+        """ (Internal) Applies a greyscale filter to the frame. """
+
         # Log start timestamp
         timer = Timer()
 
@@ -84,6 +108,8 @@ class Detector:
 
 
     def _histequ(self, frame):
+        """ (Internal) Applies a histogram equalisation to the frame. """
+
         # Log start timestamp
         timer = Timer()
 
@@ -104,6 +130,8 @@ class Detector:
 
 
     def _gausblur(self, frame):
+        """ (Internal) Applies a Gaussian blur to the frame. """
+
         # Log start timestamp
         timer = Timer()
 
@@ -124,6 +152,7 @@ class Detector:
 
 
     def _segmentation(self, edges):
+        """ (Internal) Finds contours using cv2.findContours() then calculates the minumum enclosing circles using cv2.minEnclosingCircle(). """
 
         # Log start timestamp of findContours()
         timer_findContours = Timer()
@@ -175,6 +204,8 @@ class Detector:
 
 
     def detect(self, input):
+        """ Detects the backscatter particles. Returns the particle coordinates and radius, and the real-time metrics. """
+
         # reset timings
         self._reset_metrics()
 
@@ -223,6 +254,6 @@ class Detector:
         if self.debug_windows:
             self.canny_window.update(canny)
 
-        # return canny and contours
-        return canny, particles, self._get_metrics()
+        # return detected particles
+        return particles, self._get_metrics()
 
