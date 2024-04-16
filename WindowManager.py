@@ -43,6 +43,7 @@ class Window:
     def update(self, frame):
         """ Updates the window with the given frame. """
         cv2.imshow(self.name, frame)
+        return cv2.waitKey(1)
 
 
 

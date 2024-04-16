@@ -1,10 +1,8 @@
 import os
 import cv2
 import logging
-from queue import Queue
-from threading import Thread
+from multiprocessing import Queue
 from natsort import natsorted
-
 
 class PicameraStream:
     """ Streams from a Picamera frame-by-frame. """
@@ -64,6 +62,13 @@ class PicameraStream:
 
         # Log to console
         logging.info("Camera instance has been gracefully stopped.")
+
+
+
+
+    def empty(self):
+        """ This stream is never 'empty'. """
+        return False
 
 
 
@@ -170,79 +175,7 @@ class VideoStream:
 
 
 
-
-
-
-
-class t_VideoStream:
-    """ Streams an input video file using threading. """
-
-    def __init__(self, source, queueSize=4096):
-        # initialise the OpenCV stream
-        self.capture = cv2.VideoCapture(source)
-        # initialise parameter that stops video stream
-        self.stopped = False
-        # initialise the queue for pushing frames
-        self.queue = Queue(maxsize=queueSize)
-
-
-
-
-    def start(self):
-        # start a thread to read frames from stream
-        t = Thread(
-            target=self._update,
-            args=()
-        )
-        # allow thread to be killed when main app exits
-        t.daemon = True
-        # start the thread
-        t.start()
-        return self
-
-
-
-
-    def _update(self):
-        while True:
-            # stop reading if stream is stopped
-            if self.stopped:
-                return
-            
-            # otherwise, keep reading and queuing until queue is full
-            if not self.queue.full():
-                # read the next frame from the file
-                success, frame = self.capture.read()
-
-                # check if we have reached the end of video stream
-                if not success:
-                    self.stop()
-                    return
-                
-                # push the frame to the queue
-                self.queue.put(frame)
-
-
-
-
-    def read(self):
-        # return a frame from the queue
-        return self.queue.get()
-
-
-
-
-    def stop(self):
-        # indicate that thread should be stopped
-        self.stopped = True
-        self.capture.release()
-
-
-
-
     def empty(self):
-        # returns True if queue is empty
-        if self.queue.qsize():
-            return True
-        return False
+        # Check if there are no more frames that can be read
+        return not self.capture.isOpened() or self.capture.get(cv2.CAP_PROP_POS_FRAMES) >= self.capture.get(cv2.CAP_PROP_FRAME_COUNT)
 

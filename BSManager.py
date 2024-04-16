@@ -13,7 +13,12 @@ CONTOUR_DEBUG_WINDOW_NAME = "BSDetector Debug: Detected Contours"
 HISTEQU_DEBUG_WINDOW_NAME = "BSDetector Debug: Histogram Equalisation"
 
 class Detector:
-    """ Backscatter detection logic (V1): (a) edges are detected using the Canny algorithm, (b) the detected edges are segmented using a simple method - minimum enclosing circle (MEC), (c) the centre coordinates and radius of the detected particles (MECs) are returned. """
+    """
+    Backscatter detection logic (V1):
+            (a) edges are detected using the Canny algorithm.\n
+            (b) the detected edges are segmented using minimum enclosing circles (MECs).\n
+            (c) the centre coordinates and radius of the detected MECs are returned.
+    """
 
     def __init__(self, canny_threshold, histogram_equalisation=True, debug_windows=True):
         # Zero-parameter threshold for canny (https://pyimagesearch.com/2015/04/06/zero-parameter-automatic-canny-edge-detection-with-python-and-opencv/)
