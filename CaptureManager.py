@@ -135,6 +135,8 @@ class FrameStream:
             return None, timer.stop()
 
 
+    def exit(self):
+        pass
 
 
     def empty(self):

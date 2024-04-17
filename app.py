@@ -1,7 +1,7 @@
 from multiprocessing import Process, Queue
 from datetime import datetime
-import numpy as np
 import pandas as pd
+import numpy as np
 import logging
 import cv2
 import os
@@ -62,8 +62,7 @@ BS_MANAGER_DEBUG_WINDOWS = False
 
 
 PROCESS_QUEUE_QUIT_SIGNAL = "QUIT"
-
-
+PROCESS_QUEUE_FQUIT_SIGNAL = "FQUIT"
 
 class S1_Capture(Process):
     """ Acquires and enqueues frames from the capture source. """
@@ -137,9 +136,15 @@ class S1_Capture(Process):
                 # Enqueue the frame (block until queue's size<maxsize)
                 self.output_q.put((frame, [capture_metrics]), block=True, timeout=None)
                 # Update the input visualisation window
-                input_feed_window.update(frame)
+                keypress = input_feed_window.update(frame)
                 # Log the frame enqueue 
                 logging.debug("Retrieved and enqueued frame %d", frame_count)
+                # Forcefully exit when the 'e' key is pressed
+                if keypress == ord('e'):
+                    logging.info("User triggered exit detected - sending quit signal")
+                    self.output_q.put((PROCESS_QUEUE_FQUIT_SIGNAL, None), block=True, timeout=None)
+                    stream.exit()
+                    break
                 # Increment frame count
                 frame_count += 1
             else:
@@ -203,10 +208,10 @@ class S2_Process(Process):
             frame, metrics = self.input_q.get(block=True, timeout=None)
             # Check if the frame is a quit signal (check whether it's a string first!)
             if type(frame) == str:
-                if frame == PROCESS_QUEUE_QUIT_SIGNAL:
+                if frame == PROCESS_QUEUE_QUIT_SIGNAL or frame == PROCESS_QUEUE_FQUIT_SIGNAL:
                     # If it is then send quit signal to S3 and break
-                    logging.info("Frame %d was actually a quit signal - I am now quitting", frame_count)
-                    self.output_q.put((PROCESS_QUEUE_QUIT_SIGNAL, None, None), block=True, timeout=None)
+                    logging.info("Quit signal received - I am now quitting")
+                    self.output_q.put((frame, None, None), block=True, timeout=None)
                     break
             # Log the frame retrieval 
             logging.debug("Processing frame %d", frame_count)
@@ -278,10 +283,10 @@ class S3_Project(Process):
             frame, particles, metrics = self.input_q.get(block=True, timeout=None)
             # Check if the frame is a quit signal (check whether it's a string first!)
             if type(frame) == str:
-                if frame == PROCESS_QUEUE_QUIT_SIGNAL:
+                if frame == PROCESS_QUEUE_QUIT_SIGNAL or frame == PROCESS_QUEUE_FQUIT_SIGNAL:
                     # If it is then send quit signal to Logging and break
-                    logging.info("Frame %d was actually a quit signal - I am now quitting!", frame_count)
-                    self.output_q.put(PROCESS_QUEUE_QUIT_SIGNAL)
+                    logging.info("Quit signal received - I am now quitting")
+                    self.output_q.put(frame)
                     break
             # Log the particles retrieval 
             logging.debug("Projecting frame %d", frame_count)
@@ -362,13 +367,16 @@ class Logging(Process):
             if type(metrics) == str:
                 if metrics == PROCESS_QUEUE_QUIT_SIGNAL:
                     # If it is then export to CSV and break
-                    logging.info("Frame %d data was actually a quit signal - starting to export", frame_count)
+                    logging.info("Quit signal received - starting to export", frame_count)
                     # Export dataframe as CSV
                     rt_metrics_df.to_csv(
                         path_or_buf=export_filename_csv,
                         encoding='utf-8'
                     )
                     logging.info("Successfully exported - now exiting")
+                    break
+                elif metrics == PROCESS_QUEUE_FQUIT_SIGNAL:
+                    logging.info("Force quit signal received - I am now quitting")
                     break
             # Log the particles retrieval 
             logging.debug("Logging data for frame %d", frame_count)
@@ -408,82 +416,4 @@ if __name__ == "__main__":
         stage.join()
 
     cv2.destroyAllWindows()
-
-
-
-
-# if __name__ == "__main__":
-
-
-    
-#     while True:
-#         # Read a frame
-#         frame = stream.read()
-
-#         # Detect keypress
-#         keypress = cv2.waitKey(1)
-
-#         # Exit if the 'e' key is pressed
-#         if keypress == ord('e'):
-#             break
-
-#         # While there are frames...
-#         if frame is not None:
-#             # Start timer for the total frame processing duration
-#             timer = Timer()
-
-#             # Update the input visualisation window
-#             input_feed_window.update(frame)
-
-#             # Detect the particles and retrieve real-time metrics
-#             particles, metrics = detector.detect(frame)
-
-#             # Create a black mask for the segmentation preview
-#             particle_mask = np.copy(frame)
-
-#             # Draw white circles on the black mask for each MEC
-#             for particle in particles:
-#                 cv2.circle(
-#                     particle_mask,
-#                     particle[0],
-#                     particle[1],
-#                     (0, 0, 255),
-#                     1
-#                 )
-
-#             # Display the black mask with white circles
-#             segmentation_window.update(particle_mask)
-
-#             # Create a white mask for the projector preview
-#             projector_mask = np.ones_like(frame) * 255
-
-#             # Draw black circles on the black mask for each MEC
-#             for particle in particles:
-#                 cv2.circle(
-#                     projector_mask,
-#                     particle[0],
-#                     particle[1],
-#                     (0, 0, 0),
-#                     -1
-#                 )
-
-#             # Display the white mask with black circles
-#             projector_window.update(projector_mask)
-
-#             # Stop the total frame processing duration timer
-#             total_frame_processing_time = timer.stop()
-
-#             # Append the total frame processing time to the metrics list
-#             metrics.append(total_frame_processing_time)
-
-#             # Append metrics list to end of dataframe
-#             rt_metrics_df.loc[len(rt_metrics_df)] = metrics
-    
-#     # Export dataframe as CSV
-#     rt_metrics_df.to_csv(
-#         path_or_buf=export_filename_csv,
-#         encoding='utf-8'
-#     )
-
-#     cv2.destroyAllWindows()
 
