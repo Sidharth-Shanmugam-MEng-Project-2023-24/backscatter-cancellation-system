@@ -126,9 +126,11 @@ class S1_Capture(Process):
         # Initialise window to display the input
         input_feed_window = Window(INPUT_PREVIEW_WINDOW_NAME)
 
+        quitting = False
+
         while True:
             # Keep capturing frames until the end of the file
-            if not stream.empty():
+            if not stream.empty() and not quitting:
                 # Log the frame retrieval 
                 logging.debug("Retrieving frame %d", frame_count)
                 # Capture the frame
@@ -141,16 +143,14 @@ class S1_Capture(Process):
                 logging.debug("Retrieved and enqueued frame %d", frame_count)
                 # Forcefully exit when the 'e' key is pressed
                 if keypress == ord('e'):
-                    logging.info("User triggered exit detected - sending quit signal")
-                    self.output_q.put((PROCESS_QUEUE_FQUIT_SIGNAL, None), block=True, timeout=None)
-                    stream.exit()
-                    break
+                    quitting = True
                 # Increment frame count
                 frame_count += 1
             else:
                 # Handle event where capture has finished!
-                logging.info("No frames left to capture - sending quit signal")
+                logging.info("No frames left to capture/e-key pressed - sending quit signal")
                 self.output_q.put((PROCESS_QUEUE_QUIT_SIGNAL, None), block=True, timeout=None)
+                stream.exit()
                 break
 
 
@@ -367,7 +367,7 @@ class Logging(Process):
             if type(metrics) == str:
                 if metrics == PROCESS_QUEUE_QUIT_SIGNAL:
                     # If it is then export to CSV and break
-                    logging.info("Quit signal received - starting to export", frame_count)
+                    logging.info("Quit signal received - starting to export")
                     # Export dataframe as CSV
                     rt_metrics_df.to_csv(
                         path_or_buf=export_filename_csv,
