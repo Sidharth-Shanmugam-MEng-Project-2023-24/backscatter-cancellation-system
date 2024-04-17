@@ -20,12 +20,9 @@ class Detector:
             (c) the centre coordinates and radius of the detected MECs are returned.
     """
 
-    def __init__(self, canny_threshold, histogram_equalisation=True, debug_windows=True):
+    def __init__(self, canny_threshold, debug_windows=True):
         # Zero-parameter threshold for canny (https://pyimagesearch.com/2015/04/06/zero-parameter-automatic-canny-edge-detection-with-python-and-opencv/)
         self.canny_threshold = canny_threshold
-        
-        # Whether or not to carry out the histogram equalisation step
-        self.histogram_equalisation = histogram_equalisation
         
         # Whether or not to print the intermediate step visualisation
         self.debug_windows = debug_windows
@@ -39,8 +36,7 @@ class Detector:
             self.gausblur_window = Window(GAUSBLUR_DEBUG_WINDOW_NAME)
             self.canny_window = Window(CANNY_DEBUG_WINDOW_NAME)
             self.contour_window = Window(CONTOUR_DEBUG_WINDOW_NAME)
-            if self.histogram_equalisation:
-                self.histequ_window = Window(HISTEQU_DEBUG_WINDOW_NAME)
+            self.histequ_window = Window(HISTEQU_DEBUG_WINDOW_NAME)
 
 
 
@@ -67,10 +63,6 @@ class Detector:
 
     def _get_metrics(self):
         """ (Internal) Returns the real-time metrics using a list. """
-
-        # If histogram equalisation step is skipped - populate duration with 'None'
-        if not self.histogram_equalisation:
-            self.histequ_process_duration = None
 
         timings = [
             self.greyscale_process_duration,        # Greyscale Conversion Duration (s)
@@ -215,8 +207,7 @@ class Detector:
         frame = self._greyscale(input)
         
         # apply histogram equalisation to improve contrasts for better Canny
-        if self.histogram_equalisation:
-            frame = self._histequ(frame)
+        frame = self._histequ(frame)
 
         # apply Gaussian blur noise reduction and smoothening, prep for Canny
         frame = self._gausblur(frame)

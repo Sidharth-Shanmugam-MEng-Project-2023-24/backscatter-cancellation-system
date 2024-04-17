@@ -57,7 +57,6 @@ PROJECTOR_PREVIEW_WINDOW_NAME = "Projected Light Pattern"
 #   BS_MANAGER_DEBUG_WINDOWS: Whether or not to display the intermediate
 #   step visualisation.
 CANNY_THRESHOLD_SIGMA = 0.33
-BS_MANAGER_HISTOGRAM_EQUALISATION = True
 BS_MANAGER_DEBUG_WINDOWS = False
 
 
@@ -183,7 +182,6 @@ class S2_Process(Process):
         # Initialise the backscatter detector
         detector = Detector(
             canny_threshold=CANNY_THRESHOLD_SIGMA,
-            histogram_equalisation=BS_MANAGER_HISTOGRAM_EQUALISATION,
             debug_windows=BS_MANAGER_DEBUG_WINDOWS
         )
 
