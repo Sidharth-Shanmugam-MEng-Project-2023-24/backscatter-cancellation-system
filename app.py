@@ -72,7 +72,7 @@ class S1_Capture(Process):
         All queues' maxsize must be 1 for sequential stage processing (S1->S2->S3).
         """
         super().__init__()
-        # mp.Event that stores queue of captured frames
+        # mp.Queue that stores queue of captured frames
         self.output_q = output_q
 
         # Variable to store process durations
@@ -149,95 +149,7 @@ class S1_Capture(Process):
 
 
 
-class S2_Process(Process):
-    """ Processes frames to detect backscatter particles. """
-
-    def __init__(self, input_q, output_q):
-        """
-        input_q: Queue that stores captured frames.\n
-        output_q: Queue to store computed backscatter particles.\n
-        All queues' maxsize must be 1 for sequential stage processing (S1->S2->S3).
-        """
-        super().__init__()
-        # mp.Event that stores queue of captured frames ready for processing
-        self.input_q = input_q
-        # mp.Event that stores queue of detected backscatter particle positions
-        self.output_q = output_q
-
-    def run(self,):
-        # Turn on logging
-        logging.basicConfig(
-            level=logging.DEBUG,
-            format='%(created).6f,%(levelname)s,S2_Process,%(message)s',
-            filename='export_log-s2.csv',
-            filemode='w'
-        )
-
-        # Log the start
-        logging.info("Process started with PID=%d", self.pid)
-
-        # Log
-        logging.debug("Initialising BSDetector")
-
-        # Initialise the backscatter detector
-        detector = Detector(
-            canny_threshold=CANNY_THRESHOLD_SIGMA,
-            debug_windows=BS_MANAGER_DEBUG_WINDOWS
-        )
-
-        # Log
-        logging.debug("BSDetector initialised")
-
-        # Initialise window to display the particle segmentation
-        segmentation_window = Window(SEGMENTATION_PREVIEW_WINDOW_NAME)
-
-        # Initialise frame counter to 0
-        frame_count = 0
-
-        while True:
-            # Log the frame retrieval 
-            logging.debug("Retrieving frame %d", frame_count)
-            # Retrieve the frame (block until queue has something to dequeue)
-            frame, metrics = self.input_q.get(block=True, timeout=None)
-            # Check if the frame is a quit signal (check whether it's a string first!)
-            if type(frame) == str:
-                if frame == PROCESS_QUEUE_QUIT_SIGNAL or frame == PROCESS_QUEUE_FQUIT_SIGNAL:
-                    # If it is then send quit signal to S3 and break
-                    logging.info("Quit signal received - I am now quitting")
-                    self.output_q.put((frame, None, None), block=True, timeout=None)
-                    break
-            # Log the frame retrieval 
-            logging.debug("Processing frame %d", frame_count)
-            # Process the frame
-            particles, detector_metrics = detector.detect(frame)
-            # Join frame's detect metrics to frame's capture metrics
-            metrics = metrics + detector_metrics
-            # Create a black mask for the segmentation preview
-            particle_mask = np.copy(frame)
-            # Draw white circles on the black mask for each MEC
-            for particle in particles:
-                cv2.circle(
-                    particle_mask,
-                    particle[0],
-                    particle[1],
-                    (0, 0, 255),
-                    1
-                )
-            # Display the black mask with white circles
-            segmentation_window.update(particle_mask)
-            # Log the frame retrieval and processing 
-            logging.debug("Processed frame %d", frame_count)
-            # Enqueue output queue for the next stage (block until queue's size<maxsize)
-            self.output_q.put((frame, particles, metrics), block=True, timeout=None)
-            # Increment frame count
-            frame_count += 1
-
-
-
-
-
-
-class S3_Project(Process):
+class S2_Project(Process):
     """ Project the backscatter-cancelling light patterns. """
 
     def __init__(self, input_q, output_q):
@@ -247,7 +159,7 @@ class S3_Project(Process):
         output_q: Queue that stores metrics across all stages to be logged.
         """
         super().__init__()
-        # mp.Event that stores queue of backscatter particles in each frame
+        # mp.Queue that stores queue of backscatter particles in each frame
         self.input_q = input_q
         self.output_q = output_q
 
@@ -255,8 +167,8 @@ class S3_Project(Process):
         # Turn on logging
         logging.basicConfig(
             level=logging.DEBUG,
-            format='%(created).6f,%(levelname)s,S3_Project,%(message)s',
-            filename='export_log-s3.csv',
+            format='%(created).6f,%(levelname)s,S2_Project,%(message)s',
+            filename='export_log-s2.csv',
             filemode='w'
         )
 
@@ -389,16 +301,24 @@ class Logging(Process):
 
 if __name__ == "__main__":
     q1_2 = Queue(1) # queue between stages 1 and 2
-    q2_3 = Queue(1) # queue between stages 2 and 3
-    q3_logging = Queue() # queue between stages 3 and Logging
+    q2_logging = Queue() # queue between stages 3 and Logging
+
+    # Initialise BSDetector
+    detector = Detector(
+        canny_threshold=CANNY_THRESHOLD_SIGMA,
+        debug_windows=BS_MANAGER_DEBUG_WINDOWS
+    )
+
+    det_stages, det_input_q, det_output_q = detector.detect()
 
     # Create Processes for stages of pipeline
     stages = []
-    stages.append(S1_Capture(output_q=q1_2))
-    stages.append(S2_Process(input_q=q1_2, output_q=q2_3))
-    stages.append(S3_Project(input_q=q2_3, output_q=q3_logging))
-    stages.append(Logging(input_q=q3_logging))
+    stages.append(S1_Capture(output_q=det_input_q))
+    stages.append(S2_Project(input_q=det_output_q, output_q=q2_logging))
+    stages.append(Logging(input_q=q2_logging))
 
+    # Add the detector processes
+    stages = det_stages + stages
 
     # Start the stages
     for stage in stages:
