@@ -136,7 +136,16 @@ class FrameStream:
 
 
     def exit(self):
-        pass
+        """ 
+        Cleanly disposes the queue.\n
+        Due to Python's garbage collection not properly closing the queue
+        when it has items inside, the thread/process which the queue is
+        used from is prevented from exiting. By closing then preventing
+        an automatic join thread when the parent process exits, allowing
+        for the main thread to manually join.
+        """
+        self.q.close()
+        self.q.cancel_join_thread()
 
 
     def empty(self):

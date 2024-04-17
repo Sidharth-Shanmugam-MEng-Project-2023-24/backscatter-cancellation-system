@@ -89,7 +89,7 @@ class S1_Capture(Process):
         )
 
         # Log the start
-        logging.info("Process started")
+        logging.info("Process started with PID=%d", self.pid)
 
         # Initialise capture stream
         match VIDEO_CAPTURE_SOURCE:
@@ -126,32 +126,27 @@ class S1_Capture(Process):
         # Initialise window to display the input
         input_feed_window = Window(INPUT_PREVIEW_WINDOW_NAME)
 
-        quitting = False
-
-        while True:
-            # Keep capturing frames until the end of the file
-            if not stream.empty() and not quitting:
-                # Log the frame retrieval 
-                logging.debug("Retrieving frame %d", frame_count)
-                # Capture the frame
-                frame, capture_metrics = stream.read()
-                # Enqueue the frame (block until queue's size<maxsize)
-                self.output_q.put((frame, [capture_metrics]), block=True, timeout=None)
-                # Update the input visualisation window
-                keypress = input_feed_window.update(frame)
-                # Log the frame enqueue 
-                logging.debug("Retrieved and enqueued frame %d", frame_count)
-                # Forcefully exit when the 'e' key is pressed
-                if keypress == ord('e'):
-                    quitting = True
-                # Increment frame count
-                frame_count += 1
-            else:
-                # Handle event where capture has finished!
-                logging.info("No frames left to capture/e-key pressed - sending quit signal")
-                self.output_q.put((PROCESS_QUEUE_QUIT_SIGNAL, None), block=True, timeout=None)
-                stream.exit()
+        while not stream.empty():
+            # Log the frame retrieval 
+            logging.debug("Retrieving frame %d", frame_count)
+            # Capture the frame
+            frame, capture_metrics = stream.read()
+            # Enqueue the frame (block until queue's size<maxsize)
+            self.output_q.put((frame, [capture_metrics]), block=True, timeout=None)
+            # Update the input visualisation window
+            keypress = input_feed_window.update(frame)
+            # Log the frame enqueue 
+            logging.debug("Retrieved and enqueued frame %d", frame_count)
+            # Forcefully exit when the 'e' key is pressed
+            if keypress == ord('e'):
                 break
+            # Increment frame count
+            frame_count += 1
+
+        # Handle event where capture has finished!
+        logging.info("No frames left to capture/e-key pressed - sending quit signal")
+        stream.exit()
+        self.output_q.put((PROCESS_QUEUE_QUIT_SIGNAL, None), block=True, timeout=None)
 
 
 
@@ -180,7 +175,7 @@ class S2_Process(Process):
         )
 
         # Log the start
-        logging.info("Process started")
+        logging.info("Process started with PID=%d", self.pid)
 
         # Log
         logging.debug("Initialising BSDetector")
@@ -268,7 +263,7 @@ class S3_Project(Process):
         )
 
         # Log the start
-        logging.info("Process started")
+        logging.info("Process started with PID=%d", self.pid)
 
         # Initialise window to display the projector output
         projector_window = Window(PROJECTOR_PREVIEW_WINDOW_NAME)
@@ -335,7 +330,7 @@ class Logging(Process):
         )
 
         # Log the start
-        logging.info("Process started")
+        logging.info("Process started with PID=%d", self.pid)
 
 
         # Generate CSV export filename
