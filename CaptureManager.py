@@ -4,13 +4,16 @@ import logging
 from multiprocessing import Queue
 from natsort import natsorted
 
+from TimeManager import Timer
+
 class PicameraStream:
     """ Streams from a Picamera frame-by-frame. """
 
     def __init__(self, width, height):
         # Try to import and use Picamera2 library - this will fail on non-RPi platforms
         try:
-            from picamera2 import Picamera2
+            # This line shows a warning on IDEs on non-RPi systems to due to the package absence (Suppress!)
+            from picamera2 import Picamera2 # type: ignore
 
             # Initialise Pi camera instance
             self.picam2 = Picamera2()
@@ -48,8 +51,9 @@ class PicameraStream:
     def read(self):
         """ Capture camera sensor array for constructing a frame-by-frame feed. """
 
-        success, frame = True, self.picam2.capture_array("main")
-        return success, frame
+        timer = Timer()
+        frame = True, self.picam2.capture_array("main")
+        return frame, timer.stop()
 
 
 
@@ -124,10 +128,11 @@ class FrameStream:
     def read(self):
         """ Dequeues the next frame in the sequence. """
 
+        timer = Timer()
         if not self.empty():
-            return self.q.get()
+            return self.q.get(), timer.stop()
         else:
-            return None
+            return None, timer.stop()
 
 
 
@@ -163,8 +168,9 @@ class VideoStream:
 
 
     def read(self):
-        success, frame = self.capture.read()
-        return success, frame
+        timer = Timer()
+        frame = self.capture.read()
+        return frame, timer.stop()
 
 
 

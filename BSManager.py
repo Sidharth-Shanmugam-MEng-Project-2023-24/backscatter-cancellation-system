@@ -53,8 +53,6 @@ class Detector:
         self.histequ_process_duration = 0
         # Time it takes to apply a Gaussian blur
         self.gausblur_process_duration = 0
-        # Time it takes to compute Canny thresholds
-        self.preCanny_process_duration = 0
         # Time it takes to apply the Canny algorithm
         self.canny_process_duration = 0
         # Time it takes to find contours
@@ -78,7 +76,6 @@ class Detector:
             self.greyscale_process_duration,        # Greyscale Conversion Duration (s)
             self.histequ_process_duration,          # Histogram Equalisation Duration (s)
             self.gausblur_process_duration,         # Gaussian Blur Duration (s)
-            self.preCanny_process_duration,         # Pre-Canny Threshold Finder Duration (s)
             self.canny_process_duration,            # Canny Algorithm Duration (s)
             self.findContours_process_duration,     # CV2 findContours() Duration (s)
             self.circleContours_process_duration,   # CV2 minEnclosingCircle() Duration (s)
@@ -224,20 +221,14 @@ class Detector:
         # apply Gaussian blur noise reduction and smoothening, prep for Canny
         frame = self._gausblur(frame)
 
-        # Log start timestamp of pre-canny processing
-        timer_preCanny = Timer()
+        # Log start timestamp of Canny process
+        timer_canny = Timer()
 
         # compute the median single-channel pixel intensities
         gaus_median = np.median(frame)
         # compute threshold values for canny using single parameter Canny
         lower_threshold = int(max(0, (1.0 - self.canny_threshold) * gaus_median))
         upper_threshold = int(min(255, (1.0 + self.canny_threshold) * gaus_median))
-
-        # Calculate pre-canny processing duration
-        self.preCanny_process_duration = timer_preCanny.stop()
-
-        # Log start timestamp of Canny process
-        timer_canny = Timer()
 
         # perform Canny edge detection
         canny = cv2.Canny(
