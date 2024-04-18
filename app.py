@@ -311,11 +311,11 @@ if __name__ == "__main__":
 
     det_stages, det_input_q, det_output_q = detector.detect()
 
-    # Create Processes for stages of pipeline
-    stages = []
-    stages.append(S1_Capture(output_q=det_input_q))
-    stages.append(S2_Project(input_q=det_output_q, output_q=q2_logging))
-    stages.append(Logging(input_q=q2_logging))
+    stages = [
+        S1_Capture(output_q=det_input_q),
+        S2_Project(input_q=det_output_q, output_q=q2_logging),
+        Logging(input_q=q2_logging)
+    ]
 
     # Add the detector processes
     stages = det_stages + stages

@@ -439,13 +439,13 @@ class Detector:
         self.q4_5 = Queue(1)     # queue between S4 and S5
         self.output_q = Queue(1) # queue to output to the main script
 
-        self.stages = []
-        self.stages.append(S1_Greyscale(input_q=self.input_q, output_q=self.q1_2, debug_windows=self.debug_windows))
-        self.stages.append(S2_HistogramEqualisation(input_q=self.q1_2, output_q=self.q2_3, debug_windows=self.debug_windows))
-        self.stages.append(S3_GaussianBlur(input_q=self.q2_3, output_q=self.q3_4, debug_windows=self.debug_windows))
-        self.stages.append(S4_Canny(input_q=self.q3_4, output_q=self.q4_5, debug_windows=self.debug_windows, canny_threshold=self.canny_threshold))
-        self.stages.append(S5_Segmentation(input_q=self.q4_5, output_q=self.output_q, debug_windows=self.debug_windows))
-
+        self.stages = [
+            S1_Greyscale(input_q=self.input_q, output_q=self.q1_2, debug_windows=self.debug_windows),
+            S2_HistogramEqualisation(input_q=self.q1_2, output_q=self.q2_3, debug_windows=self.debug_windows),
+            S3_GaussianBlur(input_q=self.q2_3, output_q=self.q3_4, debug_windows=self.debug_windows),
+            S4_Canny(input_q=self.q3_4, output_q=self.q4_5, debug_windows=self.debug_windows, canny_threshold=self.canny_threshold),
+            S5_Segmentation(input_q=self.q4_5, output_q=self.output_q, debug_windows=self.debug_windows)
+        ]
 
 
     def detect(self):
