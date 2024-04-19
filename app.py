@@ -2,7 +2,6 @@ from datetime import datetime
 import numpy as np
 import pandas as pd
 import cv2
-import pprint
 
 from CaptureManager import FrameStream
 from WindowManager import Window
@@ -18,7 +17,7 @@ from TimeManager import Timer
 #
 #   Input integer '0' to use Picamera2 capture_array() to capture
 #   feed frame-by-frame.
-VIDEO_CAPTURE_SOURCE = "./export_04-08-2024-14-35-53/"
+VIDEO_CAPTURE_SOURCE = "./import_04-08-2024-14-35-53/"
 
 ### VIDEO CAPTURE RESOLUTION
 #   These are the recording parameters which dictate capture
@@ -50,9 +49,6 @@ PROJECTOR_PREVIEW_WINDOW_NAME = "Projected Light Pattern"
 #   CANNY_THRESHOLD_SIGMA: Threshold for the zero-parameter
 #   Canny implementation - (https://pyimagesearch.com/2015/04/06/zero-parameter-automatic-canny-edge-detection-with-python-and-opencv/)
 #
-#   BS_MANAGER_HISTOGRAM_EQUALISATION: Whether or not to carry
-#   out the histogram equalisation step.
-#
 #   BS_MANAGER_DEBUG_WINDOWS: Whether or not to display the intermediate
 #   step visualisation.
 CANNY_THRESHOLD_SIGMA = 0.33
@@ -82,7 +78,6 @@ if __name__ == "__main__":
     # Initialise the backscatter detector
     detector = Detector(
         canny_threshold=CANNY_THRESHOLD_SIGMA,
-        histogram_equalisation=BS_MANAGER_HISTOGRAM_EQUALISATION,
         debug_windows=BS_MANAGER_DEBUG_WINDOWS
     )
 
@@ -92,10 +87,10 @@ if __name__ == "__main__":
     # Initialise a Pandas DataFrame to log real-time metrics
     rt_metrics_df = pd.DataFrame(
         columns=[
+            'Capture Duration (s)',
             'Greyscale Conversion Duration (s)',
             'Histogram Equalisation Duration (s)',
             'Gaussian Blur Duration (s)',
-            'Pre-Canny Threshold Finder Duration (s)',
             'Canny Algorithm Duration (s)',
             'CV2 findContours() Duration (s)',
             'CV2 minEnclosingCircle() Duration (s)',
@@ -105,8 +100,14 @@ if __name__ == "__main__":
     )
     
     while True:
+        # Start timer to calculate capture duration
+        timer = Timer()
+
         # Read a frame
         frame = stream.read()
+
+        # Stop timer
+        capture_duration = timer.stop()
 
         # Detect keypress
         keypress = cv2.waitKey(1)
@@ -117,14 +118,17 @@ if __name__ == "__main__":
 
         # While there are frames...
         if frame is not None:
-            # Start timer for the total frame processing duration
-            timer = Timer()
-
             # Update the input visualisation window
             input_feed_window.update(frame)
 
+            # Start timer for the total frame processing duration
+            timer = Timer()
+
             # Detect the particles and retrieve real-time metrics
             particles, metrics = detector.detect(frame)
+
+            # Stop the total frame processing duration timer
+            frame_processing_time = timer.stop()
 
             # Create a black mask for the segmentation preview
             particle_mask = np.copy(frame)
@@ -158,14 +162,14 @@ if __name__ == "__main__":
             # Display the white mask with black circles
             projector_window.update(projector_mask)
 
-            # Stop the total frame processing duration timer
-            total_frame_processing_time = timer.stop()
-
-            # Append the total frame processing time to the metrics list
-            metrics.append(total_frame_processing_time)
+            # Prepend the capture time to the metrics
+            metrics = [capture_duration] + metrics
 
             # Append metrics list to end of dataframe
             rt_metrics_df.loc[len(rt_metrics_df)] = metrics
+        else:
+            # break out of the while loop when there are no more frames
+            break
     
     # Export dataframe as CSV
     rt_metrics_df.to_csv(

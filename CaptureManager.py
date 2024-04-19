@@ -12,7 +12,8 @@ class PicameraStream:
     def __init__(self, width, height):
         # Try to import and use Picamera2 library - this will fail on non-RPi platforms
         try:
-            from picamera2 import Picamera2
+            # Pylint - Ignore the missing import error on non RPi platforms
+            from picamera2 import Picamera2     # type: ignore
 
             # Initialise Pi camera instance
             self.picam2 = Picamera2()

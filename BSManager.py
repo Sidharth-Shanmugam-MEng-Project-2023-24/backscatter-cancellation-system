@@ -15,18 +15,12 @@ HISTEQU_DEBUG_WINDOW_NAME = "BSDetector Debug: Histogram Equalisation"
 class Detector:
     """ Backscatter detection logic (V1): (a) edges are detected using the Canny algorithm, (b) the detected edges are segmented using a simple method - minimum enclosing circle (MEC), (c) the centre coordinates and radius of the detected particles (MECs) are returned. """
 
-    def __init__(self, canny_threshold, histogram_equalisation=True, debug_windows=True):
+    def __init__(self, canny_threshold, debug_windows=True):
         # Zero-parameter threshold for canny (https://pyimagesearch.com/2015/04/06/zero-parameter-automatic-canny-edge-detection-with-python-and-opencv/)
         self.canny_threshold = canny_threshold
         
-        # Whether or not to carry out the histogram equalisation step
-        self.histogram_equalisation = histogram_equalisation
-        
         # Whether or not to print the intermediate step visualisation
         self.debug_windows = debug_windows
-
-        # Initialise the real-time metric variables
-        self._reset_metrics()
 
         # Initialise the debug windows if enabled
         if self.debug_windows:
@@ -34,53 +28,7 @@ class Detector:
             self.gausblur_window = Window(GAUSBLUR_DEBUG_WINDOW_NAME)
             self.canny_window = Window(CANNY_DEBUG_WINDOW_NAME)
             self.contour_window = Window(CONTOUR_DEBUG_WINDOW_NAME)
-            if self.histogram_equalisation:
-                self.histequ_window = Window(HISTEQU_DEBUG_WINDOW_NAME)
-
-
-
-
-    def _reset_metrics(self):
-        """ (Internal) Initialises the real-time tracking metrics. """
-        # Time it takes to apply greyscale filter
-        self.greyscale_process_duration = 0
-        # Time it takes to apply histogram equalisation
-        self.histequ_process_duration = 0
-        # Time it takes to apply a Gaussian blur
-        self.gausblur_process_duration = 0
-        # Time it takes to compute Canny thresholds
-        self.preCanny_process_duration = 0
-        # Time it takes to apply the Canny algorithm
-        self.canny_process_duration = 0
-        # Time it takes to find contours
-        self.findContours_process_duration = 0
-        # Time it takes to circle the contours (min enclosing circles)
-        self.circleContours_process_duration = 0
-        # The total number of MECs on screen
-        self.particle_count = 0
-
-
-
-
-    def _get_metrics(self):
-        """ (Internal) Returns the real-time metrics using a list. """
-
-        # If histogram equalisation step is skipped - populate duration with 'None'
-        if not self.histogram_equalisation:
-            self.histequ_process_duration = None
-
-        timings = [
-            self.greyscale_process_duration,        # Greyscale Conversion Duration (s)
-            self.histequ_process_duration,          # Histogram Equalisation Duration (s)
-            self.gausblur_process_duration,         # Gaussian Blur Duration (s)
-            self.preCanny_process_duration,         # Pre-Canny Threshold Finder Duration (s)
-            self.canny_process_duration,            # Canny Algorithm Duration (s)
-            self.findContours_process_duration,     # CV2 findContours() Duration (s)
-            self.circleContours_process_duration,   # CV2 minEnclosingCircle() Duration (s)
-            self.particle_count                     # Number of MECs on screen
-        ]
-
-        return timings
+            self.histequ_window = Window(HISTEQU_DEBUG_WINDOW_NAME)
 
 
 
@@ -95,14 +43,14 @@ class Detector:
         greyscale = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
         # Calculate process duration
-        self.greyscale_process_duration = timer.stop()
+        duration = timer.stop()
 
         # output to the debug window if enabled
         if self.debug_windows:
             self.greyscale_window.update(greyscale)
 
         # return the greyscaled frame
-        return greyscale
+        return greyscale, duration
 
 
 
@@ -117,14 +65,14 @@ class Detector:
         histequ = cv2.equalizeHist(frame)
 
         # Calculate process duration
-        self.histequ_process_duration = timer.stop()
+        duration = timer.stop()
 
         # output to the debug window if enabled
         if self.debug_windows:
             self.histequ_window.update(histequ)
         
         # return the histogram equalised frame
-        return histequ
+        return histequ, duration
 
 
 
@@ -139,15 +87,44 @@ class Detector:
         gausblur = cv2.GaussianBlur(frame, (5,5), 0)
 
         # Calculate process duration
-        self.gausblur_process_duration = timer.stop()
+        duration = timer.stop()
 
         # output to the debug window if enabled
         if self.debug_windows:
             self.gausblur_window.update(gausblur)
         
         # return the Gaussian blurred frame
-        return gausblur
+        return gausblur, duration
 
+
+
+
+    def _canny(self, frame):
+        """ (Internal) Applies the Canny algorithm to the frame. """
+        # Log start timestamp of Canny process
+        timer = Timer()
+
+        # compute the median single-channel pixel intensities
+        gaus_median = np.median(frame)
+        # compute threshold values for canny using single parameter Canny
+        lower_threshold = int(max(0, (1.0 - self.canny_threshold) * gaus_median))
+        upper_threshold = int(min(255, (1.0 + self.canny_threshold) * gaus_median))
+
+        # perform Canny edge detection
+        edges = cv2.Canny(
+            frame,
+            lower_threshold,
+            upper_threshold
+        )
+
+        # Calculate the Canny process duration
+        duration = timer.stop()
+
+        # output to the debug window if enabled
+        if self.debug_windows:
+            self.canny_window.update(edges)
+
+        return edges, duration
 
 
 
@@ -167,10 +144,10 @@ class Detector:
         )
 
         # Calculate findContours process duration
-        self.findContours_process_duration = timer_findContours.stop()
+        findContours_duration = timer_findContours.stop()
 
         # Log start timestamp of minEnclosingCircle()
-        timer_circleContours = Timer()
+        timer_segmentContours = Timer()
 
         # List to store the particle information (centre coords + radius)
         particles = []
@@ -186,7 +163,7 @@ class Detector:
             particles.append((centre, radius))
 
         # Calculate findContours process duration
-        self.circleContours_process_duration = timer_circleContours.stop()
+        segmentContours_duration = timer_segmentContours.stop()
     
         # output to the debug window if enabled
         if self.debug_windows:
@@ -198,7 +175,7 @@ class Detector:
             self.contour_window.update(mask)
 
         # return the segmented particle information
-        return particles
+        return particles, findContours_duration, segmentContours_duration
 
 
 
@@ -206,54 +183,34 @@ class Detector:
     def detect(self, input):
         """ Detects the backscatter particles. Returns the particle coordinates and radius, and the real-time metrics. """
 
-        # reset timings
-        self._reset_metrics()
-
         # single channel conversion using greyscaling
-        frame = self._greyscale(input)
+        frame, greyscale_duration = self._greyscale(input)
         
         # apply histogram equalisation to improve contrasts for better Canny
-        if self.histogram_equalisation:
-            frame = self._histequ(frame)
+        frame, histequ_duration = self._histequ(frame)
 
         # apply Gaussian blur noise reduction and smoothening, prep for Canny
-        frame = self._gausblur(frame)
+        frame, gausblur_duration = self._gausblur(frame)
 
-        # Log start timestamp of pre-canny processing
-        timer_preCanny = Timer()
+        # apply the Canny algorithm to the frame
+        edges, canny_duration = self._canny(frame)
 
-        # compute the median single-channel pixel intensities
-        gaus_median = np.median(frame)
-        # compute threshold values for canny using single parameter Canny
-        lower_threshold = int(max(0, (1.0 - self.canny_threshold) * gaus_median))
-        upper_threshold = int(min(255, (1.0 + self.canny_threshold) * gaus_median))
+        # segment the particles
+        particles, findContours_duration, segmentContours_duration = self._segmentation(edges)
 
-        # Calculate pre-canny processing duration
-        self.preCanny_process_duration = timer_preCanny.stop()
+        # compile metrics into a list
+        metrics = [
+            greyscale_duration,
+            histequ_duration,
+            gausblur_duration,
+            canny_duration,
+            findContours_duration,
+            segmentContours_duration
+        ]
 
-        # Log start timestamp of Canny process
-        timer_canny = Timer()
-
-        # perform Canny edge detection
-        canny = cv2.Canny(
-            frame,
-            lower_threshold,
-            upper_threshold
-        )
-
-        # Calculate the Canny process duration
-        self.canny_process_duration = timer_canny.stop()
-
-        # Calculate particles
-        particles = self._segmentation(canny)
-
-        # Log the total number of particles in this frame
-        self.particle_count = len(particles)
-
-        # output to the debug window if enabled
-        if self.debug_windows:
-            self.canny_window.update(canny)
+        # Get the total frame processing time, add it to metrics with total particles
+        metrics = metrics + [len(particles)] + [sum(metrics)]
 
         # return detected particles
-        return particles, self._get_metrics()
+        return particles, metrics
 
