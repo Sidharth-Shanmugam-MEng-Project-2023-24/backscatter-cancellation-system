@@ -1,12 +1,16 @@
 from datetime import datetime
 import numpy as np
 import pandas as pd
+import psutil
 import cv2
+import os
 
 from CaptureManager import FrameStream
 from WindowManager import Window
 from BSManager import Detector
 from TimeManager import Timer
+
+OS_NICE_PRIORITY_LEVEL = -20
 
 ### VIDEO CAPTURE SOURCE
 #   Input a directory path to feed in a series of frame images,
@@ -60,6 +64,12 @@ BS_MANAGER_DEBUG_WINDOWS = False
 
 
 if __name__ == "__main__":
+    # Set the OS priority level
+    p = psutil.Process(os.getpid())
+    print("Current OS priority: ", p.nice())
+    p.nice(OS_NICE_PRIORITY_LEVEL)
+    print("New OS priority: ", p.nice())
+
     # Generate CSV export filename
     export_filename_csv = "export_" + datetime.now().strftime("%m-%d-%Y-%H-%M-%S") + ".csv"
 
