@@ -3,6 +3,7 @@ from datetime import datetime
 import pandas as pd
 import numpy as np
 import logging
+import psutil
 import cv2
 import os
 
@@ -10,6 +11,10 @@ import os
 from CaptureManager import FrameStream, VideoStream, PicameraStream
 from WindowManager import Window
 from TimeManager import Timer
+
+
+OS_NICE_PRIORITY_LEVEL = -20
+X11_XAUTHORITY_PATH = '/home/sid/.Xauthority'
 
 
 ### VIDEO CAPTURE SOURCE
@@ -790,6 +795,15 @@ class S8_Logging(Process):
 
 
 if __name__ == "__main__":
+    # Required to run X11 forwarding as sudo
+    os.environ['XAUTHORITY'] = X11_XAUTHORITY_PATH
+
+    # Set the OS priority level
+    p = psutil.Process(os.getpid())
+    print("Current OS priority: ", p.nice())
+    p.nice(OS_NICE_PRIORITY_LEVEL)
+    print("New OS priority: ", p.nice())
+
     q1_2 = Queue()  # Queue between stages 1 and 2
     q2_3 = Queue()  # Queue between stages 2 and 3
     q3_4 = Queue()  # Queue between stages 3 and 4
