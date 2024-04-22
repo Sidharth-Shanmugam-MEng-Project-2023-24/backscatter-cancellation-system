@@ -11,6 +11,7 @@ from BSManager import Detector
 from TimeManager import Timer
 
 OS_NICE_PRIORITY_LEVEL = -20
+X11_XAUTHORITY_PATH = '/home/sid/.Xauthority'
 
 ### VIDEO CAPTURE SOURCE
 #   Input a directory path to feed in a series of frame images,
@@ -64,6 +65,9 @@ BS_MANAGER_DEBUG_WINDOWS = False
 
 
 if __name__ == "__main__":
+    # Required to run X11 forwarding as sudo
+    os.environ['XAUTHORITY'] = X11_XAUTHORITY_PATH
+
     # Set the OS priority level
     p = psutil.Process(os.getpid())
     print("Current OS priority: ", p.nice())
