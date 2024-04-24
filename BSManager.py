@@ -187,7 +187,7 @@ class Detector:
         frame, greyscale_duration = self._greyscale(input)
         
         # apply histogram equalisation to improve contrasts for better Canny
-        frame, histequ_duration = self._histequ(frame)
+        # frame, histequ_duration = self._histequ(frame)
 
         # apply Gaussian blur noise reduction and smoothening, prep for Canny
         frame, gausblur_duration = self._gausblur(frame)
@@ -201,7 +201,7 @@ class Detector:
         # compile metrics into a list
         metrics = [
             greyscale_duration,
-            histequ_duration,
+            0,
             gausblur_duration,
             canny_duration,
             findContours_duration,

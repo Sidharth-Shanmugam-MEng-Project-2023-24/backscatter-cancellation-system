@@ -5,12 +5,12 @@ import psutil
 import cv2
 import os
 
-from CaptureManager import FrameStream
+from CaptureManager import FrameStream, VideoStream, PicameraStream
 from WindowManager import Window
 from BSManager import Detector
 from TimeManager import Timer
 
-OS_NICE_PRIORITY_LEVEL = -20
+OS_NICE_PRIORITY_LEVEL = 0
 X11_XAUTHORITY_PATH = '/home/sid/.Xauthority'
 
 ### VIDEO CAPTURE SOURCE
@@ -22,7 +22,8 @@ X11_XAUTHORITY_PATH = '/home/sid/.Xauthority'
 #
 #   Input integer '0' to use Picamera2 capture_array() to capture
 #   feed frame-by-frame.
-VIDEO_CAPTURE_SOURCE = "./import_04-08-2024-14-35-53/"
+# VIDEO_CAPTURE_SOURCE = "./import_04-08-2024-14-35-53/"
+VIDEO_CAPTURE_SOURCE = "../Tank Recordings/recording_04-22-2024-14-36-49.mkv"
 
 ### VIDEO CAPTURE RESOLUTION
 #   These are the recording parameters which dictate capture
@@ -56,12 +57,13 @@ PROJECTOR_PREVIEW_WINDOW_NAME = "Projected Light Pattern"
 #
 #   BS_MANAGER_DEBUG_WINDOWS: Whether or not to display the intermediate
 #   step visualisation.
-CANNY_THRESHOLD_SIGMA = 0.33
+CANNY_THRESHOLD_SIGMA = 0
 BS_MANAGER_HISTOGRAM_EQUALISATION = True
-BS_MANAGER_DEBUG_WINDOWS = False
+BS_MANAGER_DEBUG_WINDOWS = True
 
-
-
+# Frame crop parameters
+CROP_HEIGHT = (0,315)
+CROP_WIDTH = (240,400)
 
 
 if __name__ == "__main__":
@@ -78,10 +80,24 @@ if __name__ == "__main__":
     export_filename_csv = "export_" + datetime.now().strftime("%m-%d-%Y-%H-%M-%S") + ".csv"
 
     # Initialise capture stream
-    stream = FrameStream(VIDEO_CAPTURE_SOURCE)
+    match VIDEO_CAPTURE_SOURCE:
+        # If int 0 then set up Pi camera stream
+        case 0:
+            # Initialise FrameStream
+            stream = PicameraStream(VIDEO_CAPTURE_WIDTH, VIDEO_CAPTURE_HEIGHT)
+        # If not int 0 then check if it is a valid path
+        case _:
+            # If the path is a directory, then FrameStream
+            if os.path.isdir(VIDEO_CAPTURE_SOURCE):
+                # Initialise FrameStream
+                stream = FrameStream(VIDEO_CAPTURE_SOURCE)
+            # If the path is a file, then VideoStream
+            elif os.path.isfile(VIDEO_CAPTURE_SOURCE):
+                # Initialise VideoStream
+                stream = VideoStream(VIDEO_CAPTURE_SOURCE, crop_w=CROP_WIDTH, crop_h=CROP_HEIGHT)
     
     # Initialise window to display the input
-    input_feed_window = Window(INPUT_PREVIEW_WINDOW_NAME)
+    input_feed_window = Window(INPUT_PREVIEW_WINDOW_NAME, plot=False)
 
     # Initialise window to display the particle segmentation
     segmentation_window = Window(SEGMENTATION_PREVIEW_WINDOW_NAME)
@@ -95,7 +111,7 @@ if __name__ == "__main__":
         debug_windows=BS_MANAGER_DEBUG_WINDOWS
     )
 
-    # Initialise variable to track frame processing duration (sec)
+    # Initialise variable to track frame processing duratione (sec)
     total_frame_processing_time = 0
 
     # Initialise a Pandas DataFrame to log real-time metrics

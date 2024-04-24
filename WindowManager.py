@@ -1,19 +1,20 @@
-import cv2
+import matplotlib.pyplot as plt
 import numpy as np
+import cv2
 
 class Window:
     """ A GUI window manager utilising OpenCV. """
 
-    def __init__(self, name, frame=None):
+    def __init__(self, name, frame=None, plot=False):
         self.name = name
+        self.plot = plot
 
         # created OpenCV named window
         cv2.namedWindow(self.name)
 
         # initialise window with input frame or test img
-        if frame:
-            cv2.imshow(self.name, frame)
-        else:
+
+        if not frame:
             # create black image 800x600
             test = np.zeros((600, 800, 3), dtype=np.uint8)
 
@@ -35,14 +36,28 @@ class Window:
                 test[i, :, :] = colour
 
             # display rainbow test image
-            cv2.imshow(self.name, test)
+            if plot:
+                plt.imshow(test)
+                plt.show() 
+            else:
+                cv2.imshow(self.name, test)
+        else:
+            if plot:
+                plt.imshow(frame)
+                plt.show() 
+            else:
+                cv2.imshow(self.name, frame)
 
 
 
 
     def update(self, frame):
         """ Updates the window with the given frame. """
-        cv2.imshow(self.name, frame)
+        if self.plot:
+            plt.imshow(frame)
+            plt.show() 
+        else:
+            cv2.imshow(self.name, frame)
 
 
 
