@@ -9,8 +9,8 @@ from TimeManager import Timer
 GREYSCALE_DEBUG_WINDOW_NAME = "BSDetector Debug: Greyscale"
 GAUSBLUR_DEBUG_WINDOW_NAME = "BSDetector Debug: Gaussian Blur"
 CANNY_DEBUG_WINDOW_NAME = "BSDetector Debug: Canny Algorithm"
-CONTOUR_DEBUG_WINDOW_NAME = "BSDetector Debug: Detected Contours"
 HISTEQU_DEBUG_WINDOW_NAME = "BSDetector Debug: Histogram Equalisation"
+TRESHOLD_DEBUG_WINDOW_NAME = "BSDetector Debug: Binary Thresholding"
 
 class Detector:
     """ Backscatter detection logic (V1): (a) edges are detected using the Canny algorithm, (b) the detected edges are segmented using a simple method - minimum enclosing circle (MEC), (c) the centre coordinates and radius of the detected particles (MECs) are returned. """
@@ -27,8 +27,8 @@ class Detector:
             self.greyscale_window = Window(GREYSCALE_DEBUG_WINDOW_NAME)
             self.gausblur_window = Window(GAUSBLUR_DEBUG_WINDOW_NAME)
             self.canny_window = Window(CANNY_DEBUG_WINDOW_NAME)
-            self.contour_window = Window(CONTOUR_DEBUG_WINDOW_NAME)
             self.histequ_window = Window(HISTEQU_DEBUG_WINDOW_NAME)
+            self.threshold_window = Window(TRESHOLD_DEBUG_WINDOW_NAME)
 
 
 
@@ -51,6 +51,28 @@ class Detector:
 
         # return the greyscaled frame
         return greyscale, duration
+
+
+
+
+    def _threshold(self, frame):
+        """ (Internal) Applies a binary threshold to the frame. """
+
+        # Log start timestamp
+        timer = Timer()
+
+        # apply binary threshold
+        _, thresh = cv2.threshold(frame,200,255,cv2.THRESH_BINARY)
+
+        # Calculate process duration
+        duration = timer.stop()
+
+        # output to the debug window if enabled
+        if self.debug_windows:
+            self.threshold_window.update(thresh)
+        
+        # return the thresholded
+        return thresh, duration
 
 
 
@@ -164,15 +186,6 @@ class Detector:
 
         # Calculate findContours process duration
         segmentContours_duration = timer_segmentContours.stop()
-    
-        # output to the debug window if enabled
-        if self.debug_windows:
-            # create a black mask
-            mask = np.zeros_like(edges)
-            # draw contours white white fill
-            cv2.drawContours(mask, contours, -1, (255), cv2.FILLED)
-            # display window
-            self.contour_window.update(mask)
 
         # return the segmented particle information
         return particles, findContours_duration, segmentContours_duration
@@ -185,12 +198,15 @@ class Detector:
 
         # single channel conversion using greyscaling
         frame, greyscale_duration = self._greyscale(input)
+
+        # apply Gaussian blur noise reduction and smoothening, prep for Canny
+        frame, gausblur_duration = self._gausblur(frame)
         
         # apply histogram equalisation to improve contrasts for better Canny
         # frame, histequ_duration = self._histequ(frame)
 
-        # apply Gaussian blur noise reduction and smoothening, prep for Canny
-        frame, gausblur_duration = self._gausblur(frame)
+        # apply a binary threshold to isolate bright backscatter
+        frame, thresh_duration = self._threshold(frame)
 
         # apply the Canny algorithm to the frame
         edges, canny_duration = self._canny(frame)
@@ -201,8 +217,10 @@ class Detector:
         # compile metrics into a list
         metrics = [
             greyscale_duration,
-            0,
             gausblur_duration,
+            # histequ_duration,
+            0,
+            thresh_duration,
             canny_duration,
             findContours_duration,
             segmentContours_duration

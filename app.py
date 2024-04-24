@@ -2,6 +2,7 @@ from datetime import datetime
 import numpy as np
 import pandas as pd
 import psutil
+import time
 import cv2
 import os
 
@@ -23,27 +24,36 @@ X11_XAUTHORITY_PATH = '/home/sid/.Xauthority'
 #   Input integer '0' to use Picamera2 capture_array() to capture
 #   feed frame-by-frame.
 # VIDEO_CAPTURE_SOURCE = "./import_04-08-2024-14-35-53/"
-VIDEO_CAPTURE_SOURCE = "../Tank Recordings/recording_04-22-2024-14-36-49.mkv"
+# VIDEO_CAPTURE_SOURCE = "../Tank Recordings/recording_04-22-2024-14-36-49.mkv"
+VIDEO_CAPTURE_SOURCE = "../Tank Recordings/recording_04-22-2024-14-16-08.mkv"
 
-### VIDEO CAPTURE RESOLUTION
-#   These are the recording parameters which dictate capture
-#   resolution.
+### VIDEO CAPTURE PARAMETERS
+#   WIDTH & HEIGHT:
+#       These are the recording parameters which dictate capture
+#       resolution.
 #
-#   When wanting to use the frame-by-frame output from the
-#   bubble-backscatter-simulation program, set these values
-#   to the same as the ones input to that program (800x600).
+#       When wanting to use the frame-by-frame output from the
+#       bubble-backscatter-simulation program, set these values
+#       to the same as the ones input to that program (800x600).
 #
-#   When wanting to use a pre-recorded video source, these
-#   values will be updated to match the correct resolution
-#   of the video. Ensure they are similar to avoid confusion.
+#       When wanting to use a pre-recorded video source, these
+#       values will be updated to match the correct resolution
+#       of the video. Ensure they are similar to avoid confusion.
 #
-#   Want wanting to use the Pi Camera feed, these values will
-#   be used when configuring the camera resolution parameters,
-#   however, the camera will align the stream size to force
-#   optimal alignment, so the resolution may be slightly
-#   different.
+#       Want wanting to use the Pi Camera feed, these values will
+#       be used when configuring the camera resolution parameters,
+#       however, the camera will align the stream size to force
+#       optimal alignment, so the resolution may be slightly
+#       different.
+#
+#   CROP WIDTH & HEIGHT:
+#       
 VIDEO_CAPTURE_WIDTH = 800
 VIDEO_CAPTURE_HEIGHT = 600
+# CROP_HEIGHT = (0,315)
+# CROP_WIDTH = (240,400)
+VIDEO_CAPTURE_CROP_HEIGHT = (0, 320)
+VIDEO_CAPTURE_CROP_WIDTH = (430, 700)
 
 ### PREVIEW WINDOW NAMES
 #   These constants store the names for each GUI window
@@ -60,10 +70,6 @@ PROJECTOR_PREVIEW_WINDOW_NAME = "Projected Light Pattern"
 CANNY_THRESHOLD_SIGMA = 0
 BS_MANAGER_HISTOGRAM_EQUALISATION = True
 BS_MANAGER_DEBUG_WINDOWS = True
-
-# Frame crop parameters
-CROP_HEIGHT = (0,315)
-CROP_WIDTH = (240,400)
 
 
 if __name__ == "__main__":
@@ -94,10 +100,10 @@ if __name__ == "__main__":
             # If the path is a file, then VideoStream
             elif os.path.isfile(VIDEO_CAPTURE_SOURCE):
                 # Initialise VideoStream
-                stream = VideoStream(VIDEO_CAPTURE_SOURCE, crop_w=CROP_WIDTH, crop_h=CROP_HEIGHT)
+                stream = VideoStream(VIDEO_CAPTURE_SOURCE, crop_w=VIDEO_CAPTURE_CROP_WIDTH, crop_h=VIDEO_CAPTURE_CROP_HEIGHT)
     
     # Initialise window to display the input
-    input_feed_window = Window(INPUT_PREVIEW_WINDOW_NAME, plot=False)
+    input_feed_window = Window(INPUT_PREVIEW_WINDOW_NAME)
 
     # Initialise window to display the particle segmentation
     segmentation_window = Window(SEGMENTATION_PREVIEW_WINDOW_NAME)
@@ -119,8 +125,9 @@ if __name__ == "__main__":
         columns=[
             'Capture Duration (s)',
             'Greyscale Conversion Duration (s)',
-            'Histogram Equalisation Duration (s)',
             'Gaussian Blur Duration (s)',
+            'Histogram Equalisation Duration (s)',
+            'Binary Thresholdind Duration (s)',
             'Canny Algorithm Duration (s)',
             'CV2 findContours() Duration (s)',
             'CV2 minEnclosingCircle() Duration (s)',
@@ -197,6 +204,8 @@ if __name__ == "__main__":
 
             # Append metrics list to end of dataframe
             rt_metrics_df.loc[len(rt_metrics_df)] = metrics
+
+            time.sleep(1)
         else:
             # break out of the while loop when there are no more frames
             break
