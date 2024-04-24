@@ -50,8 +50,10 @@ VIDEO_CAPTURE_SOURCE = "../Tank Recordings/recording_04-22-2024-14-16-08.mkv"
 #       
 VIDEO_CAPTURE_WIDTH = 800
 VIDEO_CAPTURE_HEIGHT = 600
-# CROP_HEIGHT = (0,315)
-# CROP_WIDTH = (240,400)
+# CROP_HEIGHT = (None, None)
+# CROP_WIDTH = (None, None)
+# CROP_HEIGHT = (0, 315)
+# CROP_WIDTH = (240, 400)
 VIDEO_CAPTURE_CROP_HEIGHT = (0, 320)
 VIDEO_CAPTURE_CROP_WIDTH = (430, 700)
 
@@ -70,6 +72,7 @@ PROJECTOR_PREVIEW_WINDOW_NAME = "Projected Light Pattern"
 CANNY_THRESHOLD_SIGMA = 0
 BS_MANAGER_HISTOGRAM_EQUALISATION = True
 BS_MANAGER_DEBUG_WINDOWS = True
+BINARY_THRESHOLD_THRESH = (200, 255)
 
 
 if __name__ == "__main__":
@@ -100,7 +103,12 @@ if __name__ == "__main__":
             # If the path is a file, then VideoStream
             elif os.path.isfile(VIDEO_CAPTURE_SOURCE):
                 # Initialise VideoStream
-                stream = VideoStream(VIDEO_CAPTURE_SOURCE, crop_w=VIDEO_CAPTURE_CROP_WIDTH, crop_h=VIDEO_CAPTURE_CROP_HEIGHT)
+                stream = VideoStream(
+                    source=VIDEO_CAPTURE_SOURCE,
+                    crop_w=VIDEO_CAPTURE_CROP_WIDTH,
+                    crop_h=VIDEO_CAPTURE_CROP_HEIGHT,
+                    loop=True
+                )
     
     # Initialise window to display the input
     input_feed_window = Window(INPUT_PREVIEW_WINDOW_NAME)
@@ -114,6 +122,7 @@ if __name__ == "__main__":
     # Initialise the backscatter detector
     detector = Detector(
         canny_threshold=CANNY_THRESHOLD_SIGMA,
+        thresh_threshold=BINARY_THRESHOLD_THRESH,
         debug_windows=BS_MANAGER_DEBUG_WINDOWS
     )
 

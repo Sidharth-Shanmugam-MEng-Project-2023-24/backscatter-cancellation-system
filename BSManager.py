@@ -15,9 +15,11 @@ TRESHOLD_DEBUG_WINDOW_NAME = "BSDetector Debug: Binary Thresholding"
 class Detector:
     """ Backscatter detection logic (V1): (a) edges are detected using the Canny algorithm, (b) the detected edges are segmented using a simple method - minimum enclosing circle (MEC), (c) the centre coordinates and radius of the detected particles (MECs) are returned. """
 
-    def __init__(self, canny_threshold, debug_windows=True):
+    def __init__(self, canny_threshold, thresh_threshold, debug_windows=True):
         # Zero-parameter threshold for canny (https://pyimagesearch.com/2015/04/06/zero-parameter-automatic-canny-edge-detection-with-python-and-opencv/)
         self.canny_threshold = canny_threshold
+
+        self.thresh_threshold = thresh_threshold
         
         # Whether or not to print the intermediate step visualisation
         self.debug_windows = debug_windows
@@ -62,7 +64,12 @@ class Detector:
         timer = Timer()
 
         # apply binary threshold
-        _, thresh = cv2.threshold(frame,200,255,cv2.THRESH_BINARY)
+        _, thresh = cv2.threshold(
+            frame,
+            self.thresh_threshold[0],
+            self.thresh_threshold[1],
+            cv2.THRESH_BINARY
+        )
 
         # Calculate process duration
         duration = timer.stop()

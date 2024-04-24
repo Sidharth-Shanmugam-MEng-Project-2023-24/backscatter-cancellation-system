@@ -142,11 +142,12 @@ class FrameStream:
 class VideoStream:
     """ Streams an input video file. """
 
-    def __init__(self, source, crop_w=None, crop_h=None):
+    def __init__(self, source, crop_w=None, crop_h=None, loop=False):
         # initialise the OpenCV stream
         self.capture = cv2.VideoCapture(source)
         self.crop_w = crop_w
         self.crop_h = crop_h
+        self.loop = loop
         
         # check if capture is accessible
         if not self.capture.isOpened():
@@ -162,8 +163,12 @@ class VideoStream:
 
     def read(self):
         _, frame = self.capture.read()
-        if (frame is not None) and (self.crop_w is not None) and (self.crop_h is not None):
-            frame = frame[self.crop_h[0]:self.crop_h[1], self.crop_w[0]:self.crop_w[1]]
+        if frame is not None:
+            if (self.crop_w is not None) and (self.crop_h is not None):
+                frame = frame[self.crop_h[0]:self.crop_h[1], self.crop_w[0]:self.crop_w[1]]
+        elif self.loop is True:
+            self.capture.set(cv2.CAP_PROP_POS_FRAMES, 0)
+            _, frame = self.capture.read()
         return frame
 
 
