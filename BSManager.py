@@ -29,7 +29,7 @@ class Detector:
             self.greyscale_window = Window(GREYSCALE_DEBUG_WINDOW_NAME)
             self.gausblur_window = Window(GAUSBLUR_DEBUG_WINDOW_NAME)
             self.canny_window = Window(CANNY_DEBUG_WINDOW_NAME)
-            self.histequ_window = Window(HISTEQU_DEBUG_WINDOW_NAME)
+            # self.histequ_window = Window(HISTEQU_DEBUG_WINDOW_NAME)
             self.threshold_window = Window(TRESHOLD_DEBUG_WINDOW_NAME)
 
 

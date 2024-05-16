@@ -2,7 +2,6 @@ from datetime import datetime
 import numpy as np
 import pandas as pd
 import psutil
-import time
 import cv2
 import os
 
@@ -23,6 +22,7 @@ X11_XAUTHORITY_PATH = '/home/sid/.Xauthority'
 #
 #   Input integer '0' to use Picamera2 capture_array() to capture
 #   feed frame-by-frame.
+# VIDEO_CAPTURE_SOURCE = 0
 # VIDEO_CAPTURE_SOURCE = "./import_04-08-2024-14-35-53/"
 # VIDEO_CAPTURE_SOURCE = "../Tank Recordings/recording_04-22-2024-14-36-49.mkv"
 VIDEO_CAPTURE_SOURCE = "../Tank Recordings/recording_04-22-2024-14-16-08.mkv"
@@ -47,13 +47,10 @@ VIDEO_CAPTURE_SOURCE = "../Tank Recordings/recording_04-22-2024-14-16-08.mkv"
 #       different.
 #
 #   CROP WIDTH & HEIGHT:
-#       
+#       Apply a crop to isolate the region of interest, mitigating
+#       the submersible housing offsets
 VIDEO_CAPTURE_WIDTH = 800
 VIDEO_CAPTURE_HEIGHT = 600
-# CROP_HEIGHT = (None, None)
-# CROP_WIDTH = (None, None)
-# CROP_HEIGHT = (0, 315)
-# CROP_WIDTH = (240, 400)
 VIDEO_CAPTURE_CROP_HEIGHT = (0, 320)
 VIDEO_CAPTURE_CROP_WIDTH = (430, 700)
 
@@ -213,8 +210,6 @@ if __name__ == "__main__":
 
             # Append metrics list to end of dataframe
             rt_metrics_df.loc[len(rt_metrics_df)] = metrics
-
-            time.sleep(1)
         else:
             # break out of the while loop when there are no more frames
             break
